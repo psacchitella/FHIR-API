@@ -1,9 +1,24 @@
+# Java
 target/
 *.class
 *.jar
 *.war
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+
+# IDE
 .idea/
 *.iml
 .vscode/
+
+# OS
 .DS_Store
+
+# Misc
 *.log
