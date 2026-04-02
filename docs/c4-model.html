@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>C4 Model · FHIR Claim Processing API</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #030712; color: #f1f5f9; font-family: 'IBM Plex Mono', 'Courier New', monospace; min-height: 100vh; }
+  button { font-family: inherit; cursor: pointer; background: none; border: none; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #111827; } ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+  .node { border-radius: 10px; padding: 14px; transition: transform .15s, filter .15s; position: relative; min-width: 160px; max-width: 220px; }
+  .node.clickable:hover { transform: scale(1.05); filter: brightness(1.25); cursor: pointer; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+  .node-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 10px 10px 0 0; }
+  .node-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #6b7280; margin-bottom: 4px; margin-top: 2px; }
+  .node-title { color: #f1f5f9; font-weight: 600; font-size: 13px; line-height: 1.3; }
+  .node-desc { color: #9ca3af; font-size: 11px; margin-top: 8px; line-height: 1.5; }
+  .node-drill { color: #22d3ee; font-size: 11px; margin-top: 10px; }
+
+  .n-external { border: 1px solid #4b5563; background: rgba(31,41,55,.5); }
+  .n-person   { border: 1px solid #155e75; background: rgba(8,51,68,.6); }
+  .n-system   { border: 1px solid #065f46; background: rgba(6,40,30,.6); }
+  .n-container{ border: 1px solid #5b21b6; background: rgba(30,10,80,.6); }
+  .n-component{ border: 1px solid #92400e; background: rgba(60,20,5,.6); }
+  .n-code     { border: 1px solid #9f1239; background: rgba(60,5,20,.6); }
+
+  .bar-external { background: #6b7280; } .bar-person { background: #06b6d4; }
+  .bar-system { background: #10b981; } .bar-container { background: #8b5cf6; }
+  .bar-component { background: #f59e0b; } .bar-code { background: #f43f5e; }
+
+  .arrow { display:flex; align-items:center; gap:4px; }
+  .arrow-line { flex: 1; height: 1px; }
+  .arrow-label { font-size: 10px; color: #6b7280; font-family: inherit; white-space: nowrap; }
+  .arrow-v { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .arrow-v-line { width:1px; height: 32px; }
+
+  .tab-btn { padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; transition: all .15s; border: 1px solid transparent; }
+  .tab-active { background: #059669; color: #fff; }
+  .tab-inactive { background: #1f2937; color: #9ca3af; }
+  .tab-inactive:hover { background: #374151; color: #e2e8f0; }
+
+  .code-block { background: #111827; border: 1px solid #374151; border-radius: 12px; padding: 18px; font-size: 12px; line-height: 1.7; }
+  .c-cyan   { color: #22d3ee; } .c-amber  { color: #fbbf24; } .c-violet { color: #c084fc; }
+  .c-emerald{ color: #34d399; } .c-rose   { color: #fb7185; } .c-gray   { color: #6b7280; }
+
+  .step-card { display: flex; gap: 12px; border-radius: 10px; padding: 12px; background: rgba(31,41,55,.5); border: 1px solid #374151; }
+  .step-label { font-size: 10px; font-weight: 700; font-family: inherit; white-space: nowrap; margin-top: 1px; }
+
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-right: 4px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .info-box { border-radius: 10px; padding: 12px; font-size: 11px; line-height: 1.6; }
+
+  .nav-btn { padding: 8px 18px; border-radius: 8px; border: 1px solid #374151; color: #9ca3af; font-size: 13px; font-family: inherit; transition: all .15s; }
+  .nav-btn:hover:not(:disabled) { border-color: #6b7280; color: #e2e8f0; }
+  .nav-btn:disabled { opacity: .3; cursor: default; }
+
+  .level-btn { display: flex; flex-direction: column; padding: 8px 16px; border-radius: 8px; border: 1px solid; text-align: left; transition: all .15s; }
+  .level-active { border-color: #059669; background: rgba(6,78,59,.3); color: #6ee7b7; }
+  .level-inactive { border-color: #374151; background: #111827; color: #9ca3af; }
+  .level-inactive:hover { border-color: #4b5563; color: #e2e8f0; }
+  .level-label { font-size: 11px; font-weight: 700; }
+  .level-sub   { font-size: 10px; opacity: .7; }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; cursor: pointer; transition: all .15s; }
+  .dot-active { background: #34d399; transform: scale(1.4); }
+  .dot-inactive { background: #374151; }
+  .dot-inactive:hover { background: #6b7280; }
+
+  .heading { color: #f1f5f9; font-weight: 700; font-size: 20px; letter-spacing: -.02em; }
+  .subheading { color: #6b7280; font-size: 11px; margin-top: 4px; }
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+  .crumb-link { transition: color .15s; } .crumb-link:hover { color: #d1d5db; }
+  .crumb-active { color: #34d399; font-weight: 700; }
+  .neuron-circle { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: inherit; font-size: 11px; }
+
+  .flex { display: flex; } .flex-col { flex-direction: column; }
+  .items-center { align-items: center; } .justify-center { justify-content: center; }
+  .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-6 { gap: 24px; }
+  .wrap { flex-wrap: wrap; }
+  .text-center { text-align: center; }
+  .w-full { width: 100%; }
+  .max-w { max-width: 600px; }
+
+  .boundary { border-radius: 14px; padding: 16px; }
+  .boundary-eks { border: 1px dashed #065f46; background: rgba(6,40,30,.15); }
+  .boundary-ns { border: 1px dashed #5b21b6; background: rgba(30,10,80,.1); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const LEVELS = [
+  { id: 1, label: "L1 · Context",   subtitle: "System Landscape" },
+  { id: 2, label: "L2 · Container", subtitle: "Services & Data Stores" },
+  { id: 3, label: "L3 · Component", subtitle: "Inside the FHIR API" },
+  { id: 4, label: "L4 · Code",      subtitle: "Adjudication Math" },
+];
+
+const Node = ({ title, desc, type="default", clickable, onClick }) => {
+  const t = { external:"external", person:"person", system:"system", container:"container", component:"component", code:"code", default:"external" }[type] || "external";
+  return (
+    <div className={`node n-${t} ${clickable?"clickable":""}`} onClick={onClick} style={{minWidth:160,maxWidth:220}}>
+      <div className={`node-bar bar-${t}`}/>
+      <div className="node-type">{type}</div>
+      <div className="node-title">{title}</div>
+      {desc && <div className="node-desc">{desc}</div>}
+      {clickable && <div className="node-drill">↓ drill in</div>}
+    </div>
+  );
+};
+
+const ArrowH = ({ label, color="#64748b" }) => (
+  <div className="arrow" style={{minWidth:60}}>
+    <div className="arrow-line" style={{background:color}}/>
+    {label && <div className="arrow-label">{label}</div>}
+    <div className="arrow-line" style={{background:color}}/>
+  </div>
+);
+
+const ArrowV = ({ label, color="#64748b" }) => (
+  <div className="arrow-v">
+    <div className="arrow-v-line" style={{background:color}}/>
+    {label && <div className="arrow-label" style={{textAlign:"center"}}>{label}</div>}
+    <div className="arrow-v-line" style={{background:color}}/>
+  </div>
+);
+
+// ── L1 · System Context ─────────────────────────────────────────────────────
+const Level1 = ({ onDrill }) => (
+  <div className="flex flex-col items-center gap-6">
+    <div className="text-center" style={{color:"#9ca3af",fontSize:13,maxWidth:600}}>
+      The FHIR Claim Processing API sits on <strong style={{color:"#f1f5f9"}}>AWS EKS</strong>. Healthcare providers submit claims, the system adjudicates them against coverage, and returns ExplanationOfBenefit resources — the FHIR R4 equivalent of the X12 837/835 EDI bill-pay flow.
+    </div>
+
+    {/* Top row: external actors */}
+    <div className="flex items-center gap-4 wrap justify-center">
+      <Node type="person" title="Healthcare Provider" desc="Submits claims for services rendered to patients"/>
+      <Node type="person" title="Patient" desc="Views EOB statements and payment responsibility"/>
+      <Node type="person" title="Billing Admin" desc="Monitors claim status and adjudication outcomes"/>
+    </div>
+
+    <ArrowV label="FHIR R4 / HTTPS" color="#22d3ee"/>
+
+    {/* Core system */}
+    <div className="boundary boundary-eks" style={{minWidth:340}}>
+      <div className="section-label" style={{color:"#34d399",textAlign:"center"}}>AWS EKS Cluster</div>
+      <div className="flex justify-center">
+        <Node type="system" title="FHIR Claim Processing API" desc="Accepts claims, verifies coverage eligibility, runs adjudication, generates EOBs, publishes events" clickable onClick={()=>onDrill(2)}/>
+      </div>
+    </div>
+
+    <ArrowV label="integrations" color="#6b7280"/>
+
+    {/* Bottom row: external systems */}
+    <div className="flex items-center gap-4 wrap justify-center">
+      <Node type="external" title="EHR System" desc="Electronic Health Record — source of patient demographics and encounters"/>
+      <Node type="external" title="Payer System" desc="Insurance company — receives adjudicated claims for payment processing"/>
+      <Node type="external" title="Clearinghouse" desc="Routes claims between providers and payers (X12 837/835 bridge)"/>
+    </div>
+
+    {/* Pipeline steps */}
+    <div style={{marginTop:16}}>
+      <div className="section-label" style={{color:"#6b7280",textAlign:"center",marginBottom:12}}>Claim Lifecycle</div>
+      <div className="flex gap-6 wrap justify-center">
+        {[
+          {label:"Register",     detail:"Patient + Coverage created via FHIR POST"},
+          {label:"Submit",       detail:"Claim resource with CPT line items"},
+          {label:"Verify",       detail:"Coverage eligibility check (Redis-cached)"},
+          {label:"Adjudicate",   detail:"Copay + deductible + coinsurance calculation"},
+          {label:"EOB",          detail:"ExplanationOfBenefit generated + Kafka event"},
+        ].map((s,i)=>(
+          <div key={i} className="flex flex-col items-center gap-2">
+            <div className="neuron-circle" style={{width:32,height:32,background:"#064e3b",border:"1px solid #059669",color:"#34d399",fontWeight:700,fontSize:11}}>{i+1}</div>
+            <div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{s.label}</div>
+            <div style={{color:"#6b7280",fontSize:11,maxWidth:120,textAlign:"center",lineHeight:1.5}}>{s.detail}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// ── L2 · Container ──────────────────────────────────────────────────────────
+const Level2 = ({ onDrill }) => (
+  <div className="flex flex-col items-center gap-4">
+    <div className="text-center" style={{color:"#9ca3af",fontSize:13,maxWidth:600}}>
+      Inside the EKS cluster: two polyglot API implementations share the same PostgreSQL database, Redis cache, and Kafka broker. An ALB routes traffic, and each service runs as a Kubernetes Deployment.
+    </div>
+
+    {/* Ingress */}
+    <Node type="external" title="AWS ALB" desc="Application Load Balancer — TLS termination, path-based routing to FHIR services"/>
+    <ArrowV label="/fhir/*" color="#22d3ee"/>
+
+    {/* EKS boundary */}
+    <div className="boundary boundary-eks" style={{minWidth:500}}>
+      <div className="section-label" style={{color:"#34d399",textAlign:"center"}}>AWS EKS — fhir-claims namespace</div>
+
+      {/* API pods */}
+      <div className="flex gap-4 wrap justify-center" style={{marginBottom:16}}>
+        <Node type="container" title="Java / Spring Boot" desc="Port 8080 · HAPI FHIR 7.4 · JPA/Hibernate · Spring Kafka · Spring Data Redis" clickable onClick={()=>onDrill(3)}/>
+        <Node type="container" title="Python / FastAPI" desc="Port 8000 · fhir.resources · async SQLAlchemy · aiokafka · redis-py async" clickable onClick={()=>onDrill(3)}/>
+      </div>
+
+      <ArrowV label="JDBC / asyncpg" color="#8b5cf6"/>
+
+      {/* Data stores */}
+      <div className="flex gap-4 wrap justify-center">
+        <Node type="container" title="PostgreSQL 16" desc="RDS · 5 tables · Claims, Patients, Coverage, EOBs, ClaimItems"/>
+        <Node type="container" title="Redis 7" desc="ElastiCache · Coverage eligibility cache · 15-min TTL"/>
+        <Node type="container" title="Apache Kafka" desc="MSK · 2 topics × 3 partitions · Claim + EOB lifecycle events"/>
+      </div>
+    </div>
+
+    {/* Infrastructure details */}
+    <div className="flex gap-3 wrap justify-center" style={{marginTop:8}}>
+      {[
+        {name:"ECR",     color:"#f59e0b", desc:"Container images for both API implementations"},
+        {name:"RDS",     color:"#8b5cf6", desc:"Managed PostgreSQL with Multi-AZ"},
+        {name:"ElastiCache", color:"#f43f5e", desc:"Redis cluster for sub-ms cache reads"},
+        {name:"MSK",     color:"#22d3ee", desc:"Managed Kafka for event streaming"},
+        {name:"CloudWatch", color:"#6b7280", desc:"Logs, metrics, /actuator + /health"},
+      ].map(s=>(
+        <div key={s.name} style={{border:`1px solid ${s.color}44`,background:`${s.color}11`,borderRadius:10,padding:10,minWidth:120,maxWidth:150}}>
+          <div style={{color:s.color,fontWeight:700,fontSize:12}}>{s.name}</div>
+          <div style={{color:"#9ca3af",fontSize:10,marginTop:4,lineHeight:1.5}}>{s.desc}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ── L3 · Component ──────────────────────────────────────────────────────────
+const Level3 = ({ onDrill }) => {
+  const [impl, setImpl] = useState("java");
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="text-center" style={{color:"#9ca3af",fontSize:13,maxWidth:600}}>
+        Inside each API service: controllers accept FHIR resources, services execute business logic, repositories persist to PostgreSQL, and event publishers push to Kafka.
+      </div>
+
+      <div className="flex gap-2 justify-center">
+        <button onClick={()=>setImpl("java")} className={`tab-btn ${impl==="java"?"tab-active":"tab-inactive"}`}>Java / Spring Boot</button>
+        <button onClick={()=>setImpl("python")} className={`tab-btn ${impl==="python"?"tab-active":"tab-inactive"}`}>Python / FastAPI</button>
+      </div>
+
+      <div className="flex gap-6 wrap justify-center items-start">
+        {/* Controllers / Routes */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="section-label" style={{color:"#f59e0b"}}>{impl==="java" ? "Controllers" : "Routes"}</div>
+          {(impl==="java"
+            ? ["PatientController","ClaimController","CoverageController","EOBController","MetadataController"]
+            : ["patient.py","claim.py","coverage.py","eob.py","metadata.py"]
+          ).map(c=>(
+            <Node key={c} type="component" title={c} desc="FHIR R4 REST endpoint — parses/serializes resources"/>
+          ))}
+        </div>
+
+        <ArrowV label={impl==="java" ? "injects" : "calls"} color="#f59e0b"/>
+
+        {/* Services */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="section-label" style={{color:"#f59e0b"}}>Services</div>
+          <Node type="component" title={impl==="java" ? "ClaimAdjudicationService" : "adjudication_service.py"} desc="Core engine: submit, adjudicate, generate EOB" clickable onClick={()=>onDrill(4)}/>
+          <Node type="component" title={impl==="java" ? "CoverageService" : "coverage_service.py"} desc="Eligibility check with Redis cache"/>
+          <Node type="component" title={impl==="java" ? "PatientService" : "(inline in route)"} desc="CRUD operations"/>
+        </div>
+
+        <ArrowV label="publishes" color="#f59e0b"/>
+
+        {/* Infrastructure components */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="section-label" style={{color:"#f59e0b"}}>Infrastructure</div>
+          <Node type="component" title={impl==="java" ? "FhirMapper" : "fhir_mapper.py"} desc="Entity ↔ FHIR R4 resource bidirectional mapping"/>
+          <Node type="component" title={impl==="java" ? "ClaimEventPublisher" : "publisher.py"} desc="Kafka producer — claim lifecycle events"/>
+          <Node type="component" title={impl==="java" ? "JPA Repositories" : "SQLAlchemy Models"} desc="Database access layer — PostgreSQL"/>
+        </div>
+      </div>
+
+      <div className="info-box" style={{border:"1px solid rgba(5,150,105,.4)",background:"rgba(6,78,59,.2)",maxWidth:600,color:"rgba(110,231,183,.7)"}}>
+        <strong style={{color:"#34d399"}}>Shared contract:</strong> Both implementations expose identical FHIR R4 endpoints, use the same PostgreSQL schema, same Redis cache keys, and publish to the same Kafka topics. A downstream consumer cannot tell which implementation generated the event.
+      </div>
+    </div>
+  );
+};
+
+// ── L4 · Code ───────────────────────────────────────────────────────────────
+const Level4 = () => {
+  const [active, setActive] = useState("adjudication");
+  const tabs = [
+    {id:"adjudication", label:"Adjudication"},
+    {id:"eligibility",  label:"Eligibility Cache"},
+    {id:"flow",         label:"E2E Flow"},
+  ];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="text-center" style={{color:"#9ca3af",fontSize:13,maxWidth:600,margin:"0 auto"}}>
+        The adjudication engine applies <strong style={{color:"#f1f5f9"}}>copay</strong>, <strong style={{color:"#f1f5f9"}}>deductible</strong>, and <strong style={{color:"#f1f5f9"}}>coinsurance</strong> to compute the patient responsibility and insurer payment — the core of the X12 835 remittance in FHIR terms.
+      </div>
+
+      <div className="flex gap-2 justify-center wrap">
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setActive(t.id)} className={`tab-btn ${active===t.id?"tab-active":"tab-inactive"}`}>{t.label}</button>
+        ))}
+      </div>
+
+      {active==="adjudication" && (
+        <div className="flex flex-col gap-4 items-center">
+          {/* Visual pipeline */}
+          <div className="flex items-center gap-3 wrap justify-center">
+            {[
+              {label:"Submitted",value:"$1,500",color:"#22d3ee",bg:"#083344"},
+              {label:"– Copay",value:"$50",color:"#fb7185",bg:"#4c0519"},
+              {label:"– Deductible",value:"$500",color:"#fbbf24",bg:"#451a03"},
+              {label:"× 20%",value:"$190",color:"#c084fc",bg:"#3b0764"},
+              {label:"Patient Owes",value:"$740",color:"#f43f5e",bg:"#4c0519"},
+              {label:"Insurer Pays",value:"$760",color:"#34d399",bg:"#064e3b"},
+            ].map((s,i)=>(
+              <React.Fragment key={i}>
+                {i>0 && <div style={{color:"#4b5563",fontSize:18}}>→</div>}
+                <div className="flex flex-col items-center gap-1">
+                  <div className="neuron-circle" style={{width:56,height:56,background:s.bg,border:`2px solid ${s.color}`,color:s.color,fontSize:12,fontWeight:700}}>{s.value}</div>
+                  <div style={{color:"#6b7280",fontSize:10,textAlign:"center",maxWidth:80}}>{s.label}</div>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+
+          <div className="code-block max-w" style={{width:"100%"}}>
+            <div className="c-gray" style={{fontSize:11,marginBottom:10}}># Adjudication calculation (both Java + Python)</div>
+            <div><span className="c-cyan">submitted</span>    <span className="c-gray">=</span> <span className="c-amber">claim.total_amount</span></div>
+            <div><span className="c-cyan">after_copay</span>  <span className="c-gray">=</span> submitted <span className="c-gray">-</span> <span className="c-rose">$50.00</span> <span className="c-gray"># fixed copay</span></div>
+            <div><span className="c-cyan">deductible</span>   <span className="c-gray">=</span> <span className="c-amber">min</span>(after_copay, <span className="c-rose">$500.00</span>)</div>
+            <div><span className="c-cyan">after_ded</span>    <span className="c-gray">=</span> after_copay <span className="c-gray">-</span> deductible</div>
+            <div><span className="c-cyan">coinsurance</span>  <span className="c-gray">=</span> after_ded <span className="c-gray">×</span> <span className="c-violet">0.20</span> <span className="c-gray"># patient 20%</span></div>
+            <div style={{marginTop:8,borderTop:"1px solid #374151",paddingTop:8}}></div>
+            <div><span className="c-rose">patient_owes</span> <span className="c-gray">=</span> copay + deductible + coinsurance</div>
+            <div><span className="c-emerald">insurer_pays</span> <span className="c-gray">=</span> submitted <span className="c-gray">-</span> patient_owes</div>
+          </div>
+
+          <div className="code-block max-w" style={{width:"100%"}}>
+            <div className="c-gray" style={{fontSize:11,marginBottom:10}}># Example: $1,500 professional claim</div>
+            <div><span className="c-cyan">submitted</span>    <span className="c-gray">=</span> <span className="c-amber">$1,500.00</span></div>
+            <div><span className="c-cyan">after_copay</span>  <span className="c-gray">=</span> $1,500 - $50 <span className="c-gray">=</span> <span className="c-amber">$1,450.00</span></div>
+            <div><span className="c-cyan">deductible</span>   <span className="c-gray">=</span> min($1,450, $500) <span className="c-gray">=</span> <span className="c-amber">$500.00</span></div>
+            <div><span className="c-cyan">after_ded</span>    <span className="c-gray">=</span> $1,450 - $500 <span className="c-gray">=</span> <span className="c-amber">$950.00</span></div>
+            <div><span className="c-cyan">coinsurance</span>  <span className="c-gray">=</span> $950 × 0.20 <span className="c-gray">=</span> <span className="c-violet">$190.00</span></div>
+            <div style={{marginTop:8,borderTop:"1px solid #374151",paddingTop:8}}></div>
+            <div><span className="c-rose">patient_owes</span> <span className="c-gray">=</span> $50 + $500 + $190 <span className="c-gray">=</span> <span className="c-rose">$740.00</span></div>
+            <div><span className="c-emerald">insurer_pays</span> <span className="c-gray">=</span> $1,500 - $740 <span className="c-gray">=</span> <span className="c-emerald">$760.00</span></div>
+          </div>
+        </div>
+      )}
+
+      {active==="eligibility" && (
+        <div className="flex flex-col gap-4 items-center">
+          <div className="code-block max-w" style={{width:"100%"}}>
+            <div className="c-gray" style={{fontSize:11,marginBottom:10}}># Redis-cached coverage eligibility check</div>
+            <div><span className="c-cyan">cache_key</span> <span className="c-gray">=</span> <span className="c-amber">"coverage:{'{'}patient_id{'}'}"</span></div>
+            <div style={{marginTop:8}}></div>
+            <div><span className="c-violet">cached</span> <span className="c-gray">=</span> redis.get(cache_key)</div>
+            <div><span className="c-emerald">if</span> cached <span className="c-emerald">is not None</span>:</div>
+            <div>    <span className="c-emerald">return</span> cached == <span className="c-amber">"1"</span> <span className="c-gray"># cache HIT</span></div>
+            <div style={{marginTop:8}}></div>
+            <div><span className="c-gray"># cache MISS → query PostgreSQL</span></div>
+            <div><span className="c-violet">eligible</span> <span className="c-gray">=</span> db.query(Coverage)</div>
+            <div>    .filter(patient_id, status=<span className="c-amber">"active"</span>)</div>
+            <div>    .exists()</div>
+            <div style={{marginTop:8}}></div>
+            <div><span className="c-gray"># cache for 15 minutes</span></div>
+            <div>redis.set(cache_key, eligible, <span className="c-rose">ttl=900s</span>)</div>
+          </div>
+
+          <div className="info-box" style={{border:"1px solid rgba(109,40,217,.4)",background:"rgba(46,16,101,.2)",color:"rgba(221,214,254,.7)",maxWidth:600,width:"100%"}}>
+            <strong style={{color:"#c084fc"}}>Why cache?</strong> Every claim submission triggers an eligibility check. In a production system handling thousands of claims/minute, this avoids hammering the database. The 15-minute TTL balances freshness (coverage can be cancelled) with performance.
+          </div>
+        </div>
+      )}
+
+      {active==="flow" && (
+        <div className="flex flex-col gap-3 max-w" style={{width:"100%",margin:"0 auto"}}>
+          {[
+            {step:"1. POST /fhir/Patient", text:"Provider registers patient with MRN, demographics. Persisted to patients table.", color:"#22d3ee"},
+            {step:"2. POST /fhir/Coverage", text:"Insurance coverage linked to patient. subscriber_id, payor, period. Cached in Redis.", color:"#34d399"},
+            {step:"3. POST /fhir/Claim", text:"Claim with CPT-coded line items. Status set to 'active'. CLAIM_SUBMITTED published to Kafka.", color:"#fbbf24"},
+            {step:"4. POST /fhir/Claim/{id}/$adjudicate", text:"Coverage eligibility verified (Redis). Copay/deductible/coinsurance calculated. EOB entity created.", color:"#c084fc"},
+            {step:"5. Kafka: CLAIM_ADJUDICATED", text:"Event published with insurer_pays and patient_owes amounts. Downstream billing systems consume this.", color:"#fb7185"},
+            {step:"6. Kafka: EOB_GENERATED", text:"Second event with EOB ID. Notification services can trigger patient statements.", color:"#f43f5e"},
+            {step:"7. GET /fhir/EOB?patient={id}", text:"Patient or provider retrieves the FHIR ExplanationOfBenefit with full payment breakdown.", color:"#22d3ee"},
+          ].map(s=>(
+            <div key={s.step} className="step-card">
+              <div className="step-label" style={{color:s.color,minWidth:200}}>{s.step}</div>
+              <div style={{color:"#d1d5db",fontSize:11,lineHeight:1.6}}>{s.text}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+const Legend = () => (
+  <div className="flex gap-4 wrap justify-center" style={{fontSize:11}}>
+    {[
+      {label:"Person",    color:"#06b6d4"},
+      {label:"System",    color:"#10b981"},
+      {label:"Container", color:"#8b5cf6"},
+      {label:"Component", color:"#f59e0b"},
+      {label:"Code",      color:"#f43f5e"},
+      {label:"External",  color:"#6b7280"},
+    ].map(l=>(
+      <div key={l.label} className="flex items-center gap-2">
+        <div className="legend-dot" style={{background:l.color+"33",border:`1px solid ${l.color}`}}/>
+        <span style={{color:"#9ca3af"}}>{l.label}</span>
+      </div>
+    ))}
+  </div>
+);
+
+// ── App ──────────────────────────────────────────────────────────────────────
+const LC = {1:Level1, 2:Level2, 3:Level3, 4:Level4};
+
+function App() {
+  const [level, setLevel] = useState(1);
+  const LevelComponent = LC[level];
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      {/* Header */}
+      <div style={{borderBottom:"1px solid #1f2937",padding:"20px 24px"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div className="flex items-center gap-2" style={{marginBottom:4}}>
+            <div className="pulse" style={{width:8,height:8,borderRadius:"50%",background:"#34d399"}}/>
+            <span style={{color:"#34d399",fontSize:10,textTransform:"uppercase",letterSpacing:".15em",fontWeight:700}}>C4 Architecture Model</span>
+          </div>
+          <div className="heading">FHIR R4 · Claim Processing API</div>
+          <div className="subheading">Healthcare bill-pay interoperability on AWS EKS — from system context down to adjudication math</div>
+        </div>
+      </div>
+
+      {/* Level nav */}
+      <div style={{borderBottom:"1px solid #1f2937",padding:"10px 24px"}}>
+        <div style={{maxWidth:860,margin:"0 auto",display:"flex",gap:8,flexWrap:"wrap"}}>
+          {LEVELS.map(l=>(
+            <button key={l.id} onClick={()=>setLevel(l.id)} className={`level-btn ${level===l.id?"level-active":"level-inactive"}`}>
+              <span className="level-label">{l.label}</span>
+              <span className="level-sub">{l.subtitle}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Breadcrumb */}
+      <div style={{padding:"12px 24px 0"}}>
+        <div style={{maxWidth:860,margin:"0 auto",display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#4b5563"}}>
+          {LEVELS.slice(0,level).map((l,i)=>(
+            <span key={l.id} style={{display:"flex",alignItems:"center",gap:8}}>
+              {i>0 && <span>›</span>}
+              <button onClick={()=>setLevel(l.id)} className={`crumb-link ${i===level-1?"crumb-active":""}`} style={{color:i===level-1?"#34d399":"#6b7280",fontFamily:"inherit",fontSize:11}}>{l.label}</button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{flex:1,padding:"24px"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div style={{marginBottom:24,paddingBottom:16,borderBottom:"1px solid #1f2937",display:"flex",alignItems:"center",gap:12}}>
+            <div className="neuron-circle" style={{width:36,height:36,background:"#064e3b",border:"1px solid #059669",color:"#34d399",fontWeight:700,fontSize:14,flexShrink:0}}>{level}</div>
+            <div>
+              <div style={{color:"#f1f5f9",fontWeight:700}}>{LEVELS[level-1].label}</div>
+              <div style={{color:"#6b7280",fontSize:11}}>{LEVELS[level-1].subtitle}</div>
+            </div>
+          </div>
+
+          <LevelComponent onDrill={setLevel}/>
+
+          {/* Navigation */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:40,paddingTop:20,borderTop:"1px solid #1f2937"}}>
+            <button onClick={()=>setLevel(l=>Math.max(1,l-1))} disabled={level===1} className="nav-btn">← Zoom Out</button>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {LEVELS.map(l=>(
+                <div key={l.id} onClick={()=>setLevel(l.id)} className={`dot ${level===l.id?"dot-active":"dot-inactive"}`}/>
+              ))}
+            </div>
+            <button onClick={()=>setLevel(l=>Math.min(4,l+1))} disabled={level===4} className="nav-btn">Drill In →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{borderTop:"1px solid #1f2937",padding:"16px 24px"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div style={{fontSize:10,color:"#4b5563",textAlign:"center",textTransform:"uppercase",letterSpacing:".12em",marginBottom:8}}>C4 Node Types</div>
+          <Legend/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
