@@ -4,6 +4,8 @@ A healthcare interoperability API implementing the **FHIR R4** standard for clai
 
 **Both implementations share the same database schema, API contract, and adjudication logic — demonstrating polyglot microservice architecture.**
 
+> **[Interactive C4 Architecture Model](https://psacchitella.github.io/FHIR-API/c4-model.html)** — drill from system context (AWS EKS) down to adjudication math
+
 ## Architecture
 
 ```
@@ -237,8 +239,23 @@ FHIR-API/
 │   ├── docker-compose.yml
 │   └── requirements.txt
 │
+├── docs/
+│   ├── c4-model.html              # Interactive C4 architecture diagram
+│   └── index.html                 # GitHub Pages redirect
+│
 └── README.md
 ```
+
+## Architecture Diagram
+
+**[View the interactive C4 model](https://psacchitella.github.io/FHIR-API/c4-model.html)** — a 4-level drill-down from AWS EKS system context to adjudication code, built as a self-contained React app.
+
+| Level | View |
+|-------|------|
+| L1 Context | System landscape — providers, patients, EHR, payers, clearinghouse |
+| L2 Container | EKS cluster — ALB, Java + Python pods, RDS, ElastiCache, MSK |
+| L3 Component | Inside each API — controllers, services, mappers, Kafka publishers |
+| L4 Code | Adjudication math, Redis caching, end-to-end claim flow |
 
 ## License
 
