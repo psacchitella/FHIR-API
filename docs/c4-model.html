@@ -194,7 +194,7 @@ const Level1 = ({ onDrill }) => (
 const Level2 = ({ onDrill }) => (
   <div className="flex flex-col items-center gap-4">
     <div className="text-center" style={{color:"#9ca3af",fontSize:13,maxWidth:600}}>
-      Inside the EKS cluster: two polyglot API implementations share the same PostgreSQL database, Redis cache, and Kafka broker. An ALB routes traffic, and each service runs as a Kubernetes Deployment.
+      Inside the EKS cluster: four polyglot API implementations share the same PostgreSQL database, Redis cache, and Kafka broker. An ALB routes traffic, and each service runs as a Kubernetes Deployment.
     </div>
 
     {/* Ingress */}
@@ -209,6 +209,8 @@ const Level2 = ({ onDrill }) => (
       <div className="flex gap-4 wrap justify-center" style={{marginBottom:16}}>
         <Node type="container" title="Java / Spring Boot" desc="Port 8080 · HAPI FHIR 7.4 · JPA/Hibernate · Spring Kafka · Spring Data Redis" clickable onClick={()=>onDrill(3)}/>
         <Node type="container" title="Python / FastAPI" desc="Port 8000 · fhir.resources · async SQLAlchemy · aiokafka · redis-py async" clickable onClick={()=>onDrill(3)}/>
+        <Node type="container" title="Node.js / Express" desc="Port 8081 · node-postgres · ioredis · kafkajs · Custom FHIR mapper" clickable onClick={()=>onDrill(3)}/>
+        <Node type="container" title="Go / Gin" desc="Port 8082 · pgx/v5 · go-redis · kafka-go · Graceful shutdown" clickable onClick={()=>onDrill(3)}/>
       </div>
 
       <ArrowV label="JDBC / asyncpg" color="#8b5cf6"/>
@@ -242,37 +244,54 @@ const Level2 = ({ onDrill }) => (
 // ── L3 · Component ──────────────────────────────────────────────────────────
 const Level3 = ({ onDrill }) => {
   const [impl, setImpl] = useState("java");
+  const implNames = {java:"Controllers",python:"Routes",node:"Controllers",go:"Handlers"};
+  const implControllers = {
+    java: ["PatientController","ClaimController","CoverageController","EOBController","MetadataController"],
+    python: ["patient.py","claim.py","coverage.py","eob.py","metadata.py"],
+    node: ["patient.js","claim.js","coverage.js","eob.js","metadata.js"],
+    go: ["handlers.go (all)","ReadPatient","CreateClaim","AdjudicateClaim","SearchEOBs"],
+  };
+  const implServices = {
+    java: ["ClaimAdjudicationService","CoverageService","PatientService"],
+    python: ["adjudication_service.py","coverage_service.py","(inline in route)"],
+    node: ["adjudicationService.js","coverageService.js","(inline in controller)"],
+    go: ["adjudication.go","coverage.go","(inline in handler)"],
+  };
+  const implInfra = {
+    java: ["FhirMapper","ClaimEventPublisher","JPA Repositories"],
+    python: ["fhir_mapper.py","publisher.py","SQLAlchemy Models"],
+    node: ["fhirMapper.js","publisher.js","pg (node-postgres)"],
+    go: ["fhir.go","publisher.go","pgx/v5 queries"],
+  };
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="text-center" style={{color:"#9ca3af",fontSize:13,maxWidth:600}}>
         Inside each API service: controllers accept FHIR resources, services execute business logic, repositories persist to PostgreSQL, and event publishers push to Kafka.
       </div>
 
-      <div className="flex gap-2 justify-center">
-        <button onClick={()=>setImpl("java")} className={`tab-btn ${impl==="java"?"tab-active":"tab-inactive"}`}>Java / Spring Boot</button>
-        <button onClick={()=>setImpl("python")} className={`tab-btn ${impl==="python"?"tab-active":"tab-inactive"}`}>Python / FastAPI</button>
+      <div className="flex gap-2 justify-center wrap">
+        {[["java","Java / Spring Boot"],["python","Python / FastAPI"],["node","Node.js / Express"],["go","Go / Gin"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setImpl(id)} className={`tab-btn ${impl===id?"tab-active":"tab-inactive"}`}>{label}</button>
+        ))}
       </div>
 
       <div className="flex gap-6 wrap justify-center items-start">
         {/* Controllers / Routes */}
         <div className="flex flex-col items-center gap-2">
-          <div className="section-label" style={{color:"#f59e0b"}}>{impl==="java" ? "Controllers" : "Routes"}</div>
-          {(impl==="java"
-            ? ["PatientController","ClaimController","CoverageController","EOBController","MetadataController"]
-            : ["patient.py","claim.py","coverage.py","eob.py","metadata.py"]
-          ).map(c=>(
-            <Node key={c} type="component" title={c} desc="FHIR R4 REST endpoint — parses/serializes resources"/>
+          <div className="section-label" style={{color:"#f59e0b"}}>{implNames[impl]}</div>
+          {implControllers[impl].map(c=>(
+            <Node key={c} type="component" title={c} desc="FHIR R4 REST endpoint"/>
           ))}
         </div>
 
-        <ArrowV label={impl==="java" ? "injects" : "calls"} color="#f59e0b"/>
+        <ArrowV label="calls" color="#f59e0b"/>
 
         {/* Services */}
         <div className="flex flex-col items-center gap-2">
           <div className="section-label" style={{color:"#f59e0b"}}>Services</div>
-          <Node type="component" title={impl==="java" ? "ClaimAdjudicationService" : "adjudication_service.py"} desc="Core engine: submit, adjudicate, generate EOB" clickable onClick={()=>onDrill(4)}/>
-          <Node type="component" title={impl==="java" ? "CoverageService" : "coverage_service.py"} desc="Eligibility check with Redis cache"/>
-          <Node type="component" title={impl==="java" ? "PatientService" : "(inline in route)"} desc="CRUD operations"/>
+          {implServices[impl].map((s,i)=>(
+            <Node key={s} type="component" title={s} desc={i===0?"Core engine: submit, adjudicate, generate EOB":i===1?"Eligibility check with Redis cache":"CRUD operations"} clickable={i===0} onClick={i===0?()=>onDrill(4):undefined}/>
+          ))}
         </div>
 
         <ArrowV label="publishes" color="#f59e0b"/>
@@ -280,14 +299,14 @@ const Level3 = ({ onDrill }) => {
         {/* Infrastructure components */}
         <div className="flex flex-col items-center gap-2">
           <div className="section-label" style={{color:"#f59e0b"}}>Infrastructure</div>
-          <Node type="component" title={impl==="java" ? "FhirMapper" : "fhir_mapper.py"} desc="Entity ↔ FHIR R4 resource bidirectional mapping"/>
-          <Node type="component" title={impl==="java" ? "ClaimEventPublisher" : "publisher.py"} desc="Kafka producer — claim lifecycle events"/>
-          <Node type="component" title={impl==="java" ? "JPA Repositories" : "SQLAlchemy Models"} desc="Database access layer — PostgreSQL"/>
+          {implInfra[impl].map((s,i)=>(
+            <Node key={s} type="component" title={s} desc={["Entity to FHIR R4 mapping","Kafka producer for events","Database access layer"][i]}/>
+          ))}
         </div>
       </div>
 
       <div className="info-box" style={{border:"1px solid rgba(5,150,105,.4)",background:"rgba(6,78,59,.2)",maxWidth:600,color:"rgba(110,231,183,.7)"}}>
-        <strong style={{color:"#34d399"}}>Shared contract:</strong> Both implementations expose identical FHIR R4 endpoints, use the same PostgreSQL schema, same Redis cache keys, and publish to the same Kafka topics. A downstream consumer cannot tell which implementation generated the event.
+        <strong style={{color:"#34d399"}}>Shared contract:</strong> All four implementations expose identical FHIR R4 endpoints, use the same PostgreSQL schema, same Redis cache keys, and publish to the same Kafka topics. A downstream consumer cannot tell which implementation generated the event.
       </div>
     </div>
   );
